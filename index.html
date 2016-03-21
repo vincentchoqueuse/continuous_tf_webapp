@@ -1,0 +1,240 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <title>Continuous Transfer Function</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" />
+        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+        <script src="http://code.highcharts.com/highcharts.js"></script>
+        <script>
+            var N=500;
+            var numerator=null;
+            var denominator=null;
+            var chart1=null;
+            var chart2=null;
+            
+            function abs(complex){
+                return Math.sqrt(complex.real*complex.real+complex.imag*complex.imag);
+            }
+            
+            function polyval(polynomial,w)
+            {
+                var real=0;
+                var imag=0;
+                for (var indice=0;indice<polynomial.length;indice++)
+                {
+                    deg=polynomial.length-1-indice;
+                    switch(deg%4)
+                    {
+                        case 0:              //(jw)^4n=w^4n
+                            real+=polynomial[deg]*Math.pow(w,deg);
+                            break;
+                        case 1:              //(jw)^(4n+1)=j*w^(4n+1)
+                            imag+=polynomial[deg]*Math.pow(w,deg);
+                            break;
+                        case 2:               //(jw)^(4n+2)=-w^(4n+2)
+                            real-=polynomial[deg]*Math.pow(w,deg);
+                            break;
+                        case 3:               //(jw)^(4n+3)=-j*w^(4n+2)
+                            imag-=polynomial[deg]*Math.pow(w,deg);
+                            break;
+                    }
+                }
+                value = {real:real, imag:imag};
+                return value;
+            }
+        
+            $(function() {
+              
+              $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
+                                           chart1.reflow();
+                                           chart2.reflow();
+                                           })
+              
+              $(".xaxis_val").change(function(){$("#analyze").trigger("click");});
+              
+              $("#xaxis_type").change(function(){
+                    type_array=["linear","logarithmic"];
+                    index=$("#xaxis_type").prop('selectedIndex');
+                    chart1.xAxis[0].update({ type: type_array[index]});
+                    chart2.xAxis[0].update({ type: type_array[index]});
+                    });
+              
+              $("#analyze").click(function() {
+                    numerator=JSON.parse($("#numerator").val());
+                    denominator=JSON.parse($("#denominator").val());
+                    xmax=parseFloat($("#xmax").val());
+                    xmin=parseFloat($("#xmin").val());
+                    xmax_log=Math.log10(xmax)
+                    xmin_log=Math.log10(xmin);
+                    step=(xmax_log-xmin_log)/N;
+                                  
+                    var mySeries1 = [];
+                    var mySeries2 = [];
+                    for (var indice=1;indice<=N;indice++)
+                        {
+                        w=Math.pow(10,xmin_log+indice*step);
+                        num_temp=polyval(numerator,w)
+                        den_temp=polyval(denominator,w)
+                        num_modulus=Math.sqrt(num_temp.real*num_temp.real+num_temp.imag*num_temp.imag);
+                        den_modulus=Math.sqrt(den_temp.real*den_temp.real+den_temp.imag*den_temp.imag);
+                        gaindB=20*Math.log10(num_modulus/den_modulus);
+                        angle_rad=Math.atan2(num_temp.imag,num_temp.real)-Math.atan2(den_temp.imag,den_temp.real);
+                        angle_deg=180.0*angle_rad/Math.PI;
+                        mySeries1.push([w, gaindB]);
+                        mySeries2.push([w, angle_deg]);
+                        }
+                    
+                    chart1.series[0].setData(mySeries1,true,false);
+                    chart2.series[0].setData(mySeries2,true,false);
+                    });
+                                  
+              
+              chart1=new Highcharts.Chart({credits: {enabled: false,},
+                                          chart: {renderTo:'figure1',},
+                                          title: {text:''},
+                                          yAxis: {title: {text: "Gain (dB)"}},
+                                          xAxis: {
+                                                type: 'logarithmic',
+                                                minorTickInterval: 1,
+                                                title: {text: "Angular Frequency (rad/s)"}
+                                                },
+                                          plotOptions: {line: {marker: {enabled: false},animation: false,}},
+                                          series: [{
+                                                  data: [0,0],
+                                                  pointStart: 1
+                                                  }]
+                                             });
+              
+              chart2=new Highcharts.Chart({credits: {enabled: false,},
+                                          chart: {renderTo:'figure2',},
+                                          title: {text:''},
+                                          yAxis: {title: {text: "Angle (deg)"}},
+                                          xAxis: {
+                                            type: 'logarithmic',
+                                            minorTickInterval: 1,
+                                            title: {text: "Angular Frequency (rad/s)"}
+                                          },
+                                          plotOptions: {line: {marker: {enabled: false},animation: false,}},
+                                          series: [{
+                                                   data: [0,0],
+                                                   pointStart: 1
+                                                   }]
+                                          });
+              
+            //trigger for initialisation
+            $("#analyze").trigger("click");
+            
+            });
+        </script>
+    </head>
+    
+    <body >
+        <div class="container">
+            <a href="https://github.com/vincentchoqueuse"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/567c3a48d796e2fc06ea80409cc9dd82bf714434/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_darkblue_121621.png"></a>
+           
+            
+            <h1 class="page-header">Continuous Transfer Function</h1>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Transfert Function</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" for="numerator">Numerator:</label>
+                                <div class="col-sm-8">
+                                    <input id="numerator" class="form-control" value="[1]" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" for="denominator">Denominator:</label>
+                                <div class="col-sm-8">
+                                    <input id="denominator" class="form-control" value="[1,1]" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" ></label>
+                                <div class="col-sm-8">
+                                    <button id="analyze" class="btn btn-primary btn-block">Analyze</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- End of panel -->
+                    
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Figure Parameters</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" for="xaxis_type">Type:</label>
+                                <div class="col-sm-8">
+                                    <select id="xaxis_type" class="form-control" >
+                                        <option>Linear</option>
+                                        <option selected>Log</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" for="xmin">xmin:</label>
+                                <div class="col-sm-8">
+                                    <input id="xmin" type="number" min="0.0001" class="form-control xaxis_val" value="0.001" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label class="control-label col-sm-4" for="xmin">xmax:</label>
+                                <div class="col-sm-8">
+                                    <input id="xmax" type="number" step="any" class="form-control xaxis_val" value="10" />
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                    </div> <!-- End of panel -->
+            
+            
+            </div>
+            <div class="col-md-8">
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li role="presentation" class="active">
+                        <a href="#gain" role="tab" data-toggle="tab" >Gain</a>
+                    </li>
+                    <li role="presentation">
+                        <a href="#phase" role="tab" data-toggle="tab">Phase</a>
+                    </li>
+                </ul>
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active " id="gain">
+                        <div id="figure1" style="width:100%;height: 500px; margin: 0 auto"></div>
+                    </div>
+                    <div role="tabpanel" class="tab-pane" id="phase">
+                        <div id="figure2" style="width:100%;height: 500px; margin: 0 auto"></div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            
+            <footer style="text-align:center;padding-top:20px;">
+                <p>Developed by: <a href="http://www.v-choqueuse.com">
+                    Vincent Choqueuse</a></p>
+            </footer>
+        </div>
+        
+    </body>
+</html>
